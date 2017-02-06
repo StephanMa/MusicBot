@@ -1289,6 +1289,60 @@ class MusicBot(discord.Client):
                 delete_after=30
             )
 
+    async def cmd_addpl(self, player, channel, server, message):
+        """
+        Usage:
+            {command_prefix}addpl
+
+        Add the current song into the autoplaylist
+        """
+
+        if player.current_entry:
+            if player.current_entry.url is not None:
+                autoplaylist = open( self.config.auto_playlist_file, 'r' )
+                listentry = autoplaylist.readlines()
+                autoplaylist.close()
+                title = player.current_entry.title
+                found = False
+                for line in listentry:
+                    if str(player.current_entry.url) in line:                        
+                        found = True
+
+                if not found:
+                    autoplaylist = open( self.config.auto_playlist_file, 'a' )
+                    autoplaylist.write( player.current_entry.url + "\n" )
+                    autoplaylist.close()
+                    addpl_text = title + " was added to playlist"
+                else:
+                    addpl_text = title + " is already in playlist"
+            else:
+                addpl_text = "song has no url"
+
+            return Response( addpl_text, delete_after=25 )
+        else:
+            return Response(
+                'There are no songs queued! Queue something with {}play.'.format(self.config.command_prefix),
+                delete_after=30
+            )
+
+    async def cmd_reloadpl(self, player, channel, server, message):
+        """
+        Usage:
+            {command_prefix}reloadpl
+
+        Reload the playlist. Afther addpl the user must reload the playlist to hear the new songs.
+        """
+        try:
+            del self.autoplaylist
+            self.autoplaylist = load_file(self.config.auto_playlist_file)
+            if self.autoplaylist is not None:
+                return Response( "autoplaylist was reloaded", delete_after=25 )
+            else:
+                return Response( "Could not reload autoplaylist", delete_after=25 )
+        except IOError as e:
+            print("Error loading", self.autoplaylist, e)
+            return Response( "Could not reload autoplaylist", delete_after=25 )
+
     async def cmd_summon(self, channel, author, voice_channel):
         """
         Usage:
@@ -1760,7 +1814,7 @@ class MusicBot(discord.Client):
         Changes the bot's nickname.
         """
 
-        if not channel.permissions_for(server.me).change_nickname:
+        if not channel.permissions_for(server.me).change_nicknames:
             raise exceptions.CommandError("Unable to change nickname: no permission.")
 
         nick = ' '.join([nick, *leftover_args])
